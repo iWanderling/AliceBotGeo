@@ -1,4 +1,5 @@
-import requests, math
+import requests
+import math
 
 
 def get_distance(p1, p2):
