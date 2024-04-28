@@ -5,8 +5,9 @@ import logging
 
 # Инициализация приложения и логирования:
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO, filename='app.log',
-                    format='%(asctime)s %(levelname)s %(name)s %(message)s')
+
+# Создаём словарь, где для каждого пользователя мы будем хранить его имя:
+sessionStorage = {}
 
 
 # Функция для отправки данных на сервер:
@@ -27,28 +28,49 @@ def main():
 
 # Обработчик диалога с пользователем:
 def handle_dialog(res, req):
+    user_id = req['session']['user_id']
+
     if req['session']['new']:
-        res['response']['text'] = ('Добро пожаловать! Я - помощник, который может показать вам город, '
-                                   'а также отправить вам расстояние между выбранными городами!')
+        res['response']['text'] = 'Как вас зовут?'
+
+        sessionStorage[user_id] = {
+            'first_name': None
+        }
         return
 
-    # Получение городов:
-    cities = get_cities(req)
-    logging.info(cities)
-    if not cities:
-        res['response']['text'] = 'Вы не написали название города(-ов)!'
+    # Если пользователь не назвал своё имя - сообщаем об этом:
+    if sessionStorage[user_id]['first_name'] is None:
+        first_name = get_first_name(req)
 
-    elif len(cities) == 1:
-        res['response']['text'] = ('Данный город находится в следующей стране: ' +
-                                   get_geo_coordinates(cities[0], 'country'))
+        if first_name is None:
+            res['response']['text'] = 'Вы не назвали своё имя! Пожалуйста, скажите, как вас зовут?'
 
-    elif len(cities) == 2:
-        distance = get_distance(get_geo_coordinates(cities[0], 'coordinates'),
-                                get_geo_coordinates(cities[1], 'coordinates'))
-        res['response']['text'] = 'Расстояние между данными городами: ' + \
-                                  str(round(distance)) + ' км.'
+        else:
+            sessionStorage[user_id]['first_name'] = first_name
+            res['response']['text'] = (f'Добро пожаловать, {first_name.title()}! '
+                                       f'Я - помощник, который может показать вам город, '
+                                       'а также отправить вам расстояние между выбранными городами!')
+            return
     else:
-        res['response']['text'] = 'Вы отправили слишком много городов!'
+        # Получение городов:
+        cities = get_cities(req)
+        logging.info(cities)
+        name = sessionStorage[user_id]['first_name'].capitalize()
+
+        if not cities:
+            res['response']['text'] = f'{name}, Вы не написали название города(-ов)!'
+
+        elif len(cities) == 1:
+            res['response']['text'] = (f'{name}, данный город находится в следующей стране: ' +
+                                       get_geo_coordinates(cities[0], 'country'))
+
+        elif len(cities) == 2:
+            distance = get_distance(get_geo_coordinates(cities[0], 'coordinates'),
+                                    get_geo_coordinates(cities[1], 'coordinates'))
+            res['response']['text'] = f'{name}, расстояние между данными городами: ' + \
+                                      str(round(distance)) + ' км.'
+        else:
+            res['response']['text'] = f'{name}, Вы отправили слишком много городов!'
 
 
 def get_cities(req):
@@ -61,6 +83,18 @@ def get_cities(req):
                 cities.append(entity['value']['city'])
 
     return cities
+
+
+def get_first_name(req):
+    # Перебираем сущности:
+    for entity in req['request']['nlu']['entities']:
+
+        # Находим сущность с типом 'YANDEX.FIO':
+        if entity['type'] == 'YANDEX.FIO':
+
+            # Если есть сущность с ключом 'first_name', то возвращаем её значение.
+            # Во всех остальных случаях возвращаем None:
+            return entity['value'].get('first_name', None)
 
 
 if __name__ == '__main__':

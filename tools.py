@@ -51,7 +51,7 @@ def get_geo_coordinates(city_name, type_info):
             response = requests.get(url, params)
             json = response.json()
 
-            coordinates_of_city = json['response']['GeoObjectCollection']['featureMember'][0]
+            coordinates_of_city = json['response']['GeoObjectCollection']['featureMember'][0] \
             ['GeoObject']['Point']['pos'].split()
 
             long, lat = float(coordinates_of_city[0]), float(coordinates_of_city[1])
