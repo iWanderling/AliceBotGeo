@@ -34,12 +34,12 @@ def handle_dialog(res, req):
 
     # Получение городов:
     cities = get_cities(req)
-
+    logging.info(cities)
     if not cities:
         res['response']['text'] = 'Вы не написали название города(-ов)!'
 
     elif len(cities) == 1:
-        res['response']['text'] = ('Данный город находится в следующей стране:' +
+        res['response']['text'] = ('Данный город находится в следующей стране: ' +
                                    get_geo_coordinates(cities[0], 'country'))
 
     elif len(cities) == 2:
